@@ -32,7 +32,7 @@ class motion_segmentation : public cv::BackgroundSubtractor
     motion_segmentation();
 
     /// \see cv::BackgroundSubtractor::apply
-    void apply(cv::InputArray image, cv::OutputArray fgmask, double learningRate = -1) override;
+    void apply(cv::InputArray image, cv::OutputArray fgmask, double rho) override;
 
     /// \see cv::BackgroundSubtractor::BackgroundSubtractor
     void getBackgroundImage(cv::OutputArray backgroundImage) const override

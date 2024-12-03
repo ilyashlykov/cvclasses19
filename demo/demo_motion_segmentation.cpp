@@ -18,9 +18,11 @@ int demo_motion_segmentation(int argc, char* argv[])
     const auto demo_wnd = "demo";
 
     int threshold = 50;
+    int rho = 10;
     cv::namedWindow(main_wnd);
     cv::namedWindow(demo_wnd);
     cv::createTrackbar("th", demo_wnd, &threshold, 255);
+    cv::createTrackbar("rho %", demo_wnd, &rho, 100);
 
     cv::Mat frame;
     cv::Mat frame_mseg;
@@ -30,7 +32,7 @@ int demo_motion_segmentation(int argc, char* argv[])
         cv::imshow(main_wnd, frame);
 
         mseg->setVarThreshold(threshold); // \todo use TackbarCallback
-        mseg->apply(frame, frame_mseg);
+        mseg->apply(frame, frame_mseg, (double)rho/100);
         if (!frame_mseg.empty())
             cv::imshow(demo_wnd, frame_mseg);
     }
