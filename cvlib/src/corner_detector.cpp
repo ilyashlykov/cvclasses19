@@ -25,8 +25,8 @@ void corner_detector_fast::detect(cv::InputArray image, CV_OUT std::vector<cv::K
     if (img.channels() > 1)
         cv::cvtColor(img, img, cv::COLOR_RGB2GRAY);
 
-    const int threshold = 25;
-
+    const int threshold = 40;
+    const int t = 9; 
 
     const int circleOffsets[16][2] = {
         {0, 3}, {1, 2}, {2, 2}, {3, 1},
@@ -34,45 +34,55 @@ void corner_detector_fast::detect(cv::InputArray image, CV_OUT std::vector<cv::K
         {0, -3}, {-1, -3}, {-2, -2}, {-3, -1},
         {-3, 0}, {-3, 1}, {-2, 2}, {-1, 3}
     };
-        for (int y = 3; y < img.rows - 3; y ++)
+
+    for (int y = 3; y < img.rows - 3; y++)
     {
-        for (int x = 3; x < img.cols - 3; x ++)
+        for (int x = 3; x < img.cols - 3; x++)
         {
             int centerPixel = img.at<uchar>(y, x);
-            int brighter = 0, darker = 0;
 
-            int n = 0;
-            int t = 10;
-
-            for (int i = 0; i < 16; i += 4)
+            // Вектор для хранения информации о яркости пикселя: 1 - центральный пиксель темнее, 2 - ярче
+            std::vector<int> binaryCircle(16, 0);
+            for (int i = 0; i < 16; i++)
             {
                 int offsetY = circleOffsets[i][0];
                 int offsetX = circleOffsets[i][1];
                 int neighborPixel = img.at<uchar>(y + offsetY, x + offsetX);
 
-                if (std::abs(neighborPixel - centerPixel) > threshold) n++;
+                if (neighborPixel > centerPixel + threshold)
+                    binaryCircle[i] = 1; 
+                else if (neighborPixel < centerPixel - threshold)
+                    binaryCircle[i] = 2;
             }
 
-            if (n >= 3)
-            {n = 0;
-                for (int i=0; (i<16) & (16 - i > n - t); i++)
+            int count = 0;
+            int currentValue = binaryCircle[0];
+            for (int i = 0; i < (16 + t - 1); i++) // Зацикленный проход
+            {
+                if (currentValue == 0)
                 {
-                    int offsetY = circleOffsets[i][0];
-                    int offsetX = circleOffsets[i][1];
-                    int neighborPixel = img.at<uchar>(y + offsetY, x + offsetX);
-
-                    if (std::abs(neighborPixel - centerPixel) > threshold) n++;
-                    else n = 0;
-
+                    count = 0;
+                    currentValue = binaryCircle[(i+1) % 16];
+                    continue;
                 }
-            
-            if (n >= t)
-                keypoints.emplace_back(cv::KeyPoint(cv::Point2f(x, y), 7));
 
+                if (binaryCircle[i % 16] == currentValue)
+                {
+                    count++;
+                    if (count >= t)
+                    {
+                        keypoints.emplace_back(cv::KeyPoint(cv::Point2f(x, y), 7));
+                        break;
+                    }
+                }
+                else
+                {
+                    currentValue = binaryCircle[i % 16];
+                    count = 1;
+                }
             }
         }
     }
-    // \todo implement FAST with minimal LOCs(lines of code), but keep code readable.
 }
 
 void corner_detector_fast::compute(cv::InputArray image, std::vector<cv::KeyPoint>& keypoints, cv::OutputArray descriptors)
