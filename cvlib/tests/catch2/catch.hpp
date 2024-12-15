@@ -4608,6 +4608,10 @@ namespace Catch {
     #else // Для x86 на macOS
         #define CATCH_TRAP() __asm__("int $3\n" : : ) /* NOLINT */
     #endif
+<<<<<<< HEAD
+=======
+
+>>>>>>> 8ed81749cffb8b3f77de758bee1122574b2e6b6c
 
 #elif defined(CATCH_PLATFORM_LINUX)
     // If we can use inline assembler, do it because this allows us to break
