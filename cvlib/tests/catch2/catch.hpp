@@ -4602,9 +4602,12 @@ namespace Catch {
     bool isDebuggerActive();
 }
 
-#ifdef CATCH_PLATFORM_MAC
-
-    #define CATCH_TRAP() __asm__("int $3\n" : : ) /* NOLINT */
+#ifdef __APPLE__
+    #if defined(__aarch64__) // Для ARM на macOS
+        #define CATCH_TRAP() __builtin_trap()
+    #else // Для x86 на macOS
+        #define CATCH_TRAP() __asm__("int $3\n" : : ) /* NOLINT */
+    #endif
 
 #elif defined(CATCH_PLATFORM_LINUX)
     // If we can use inline assembler, do it because this allows us to break
