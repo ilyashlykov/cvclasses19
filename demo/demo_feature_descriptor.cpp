@@ -1,29 +1,19 @@
-/* Demo application for Computer Vision Library.
- * @file
- * @date 2018-09-05
- * @author Anonymous
- */
-
 #include <cvlib.hpp>
 #include <opencv2/opencv.hpp>
-
 #include "utils.hpp"
-
 int demo_feature_descriptor(int argc, char* argv[])
 {
     cv::VideoCapture cap(0);
     if (!cap.isOpened())
         return -1;
-
     const auto main_wnd = "orig";
     const auto demo_wnd = "demo";
-
     cv::namedWindow(main_wnd);
     cv::namedWindow(demo_wnd);
 
     cv::Mat frame;
     auto detector_a = cvlib::corner_detector_fast::create();
-    auto detector_b = cv::KAZE::create();
+    auto detector_b = cv::ORB::create();
     std::vector<cv::KeyPoint> corners;
     cv::Mat descriptors;
 
@@ -34,11 +24,18 @@ int demo_feature_descriptor(int argc, char* argv[])
         cap >> frame;
         cv::imshow(main_wnd, frame);
 
-        detector_b->detect(frame, corners); // \todo use your detector (detector_b)
+        detector_a->detect(frame, corners);
         cv::drawKeypoints(frame, corners, frame, cv::Scalar(0, 0, 255));
 
         utils::put_fps_text(frame, fps);
         // \todo add count of the detected corners at the top left corner of the image. Use green text color.
+                cv::putText(frame,
+					std::to_string(corners.size()),
+					cv::Point(40, 40), 
+					cv::FONT_ITALIC,
+					1.0,
+					CV_RGB(0, 255, 0),
+					1);
         cv::imshow(demo_wnd, frame);
 
         pressed_key = cv::waitKey(30);
@@ -46,21 +43,16 @@ int demo_feature_descriptor(int argc, char* argv[])
         if (pressed_key == ' ') // space
         {
             cv::FileStorage file("descriptor.json", cv::FileStorage::WRITE | cv::FileStorage::FORMAT_JSON);
-
             detector_a->compute(frame, corners, descriptors);
             file << detector_a->getDefaultName() << descriptors;
-
             detector_b->compute(frame, corners, descriptors);
             file << "detector_b" << descriptors;
-
             std::cout << "Dump descriptors complete! \n";
         }
-
         std::cout << "Feature points: " << corners.size() << "\r";
     }
-
     cv::destroyWindow(main_wnd);
     cv::destroyWindow(demo_wnd);
-
     return 0;
 }
+

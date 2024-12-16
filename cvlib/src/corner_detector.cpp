@@ -88,8 +88,28 @@ void corner_detector_fast::detect(cv::InputArray image, CV_OUT std::vector<cv::K
 void corner_detector_fast::compute(cv::InputArray image, std::vector<cv::KeyPoint>& keypoints, cv::OutputArray descriptors)
 {
     cv::Mat img = image.getMat();
-    const int desc_length = 16; // Простая длина дескриптора
-    descriptors.create(static_cast<int>(keypoints.size()), desc_length, CV_8U);
+
+    if (img.channels() > 1)
+        cv::cvtColor(img, img, cv::COLOR_RGB2GRAY);
+
+    const int patchSize = 31;    // Размер патча вокруг ключевой точки
+    const int desc_length = 256; // Длина дескриптора (256 бит)
+
+    // Случайные смещения для бинарных тестов (инициализируются один раз)
+    static std::vector<cv::Point> offsets1, offsets2;
+    if (offsets1.empty() || offsets2.empty())
+    {
+        cv::RNG rng(42); // Инициализация генератора случайных чисел
+        for (int i = 0; i < desc_length; ++i)
+        {
+            offsets1.emplace_back(rng.uniform(-patchSize / 2, patchSize / 2),
+                                  rng.uniform(-patchSize / 2, patchSize / 2));
+            offsets2.emplace_back(rng.uniform(-patchSize / 2, patchSize / 2),
+                                  rng.uniform(-patchSize / 2, patchSize / 2));
+        }
+    }
+
+    descriptors.create(static_cast<int>(keypoints.size()), desc_length / 8, CV_8U);
     auto desc_mat = descriptors.getMat();
     desc_mat.setTo(0);
 
@@ -98,14 +118,24 @@ void corner_detector_fast::compute(cv::InputArray image, std::vector<cv::KeyPoin
         const cv::KeyPoint& kp = keypoints[i];
         uchar* desc_ptr = desc_mat.ptr<uchar>(static_cast<int>(i));
 
-        // Пример: записать значения яркости в шаблон 4x4 вокруг ключевой точки
-        for (int dy = -2; dy <= 1; ++dy)
+        if (kp.pt.x < patchSize / 2 || kp.pt.x >= img.cols - patchSize / 2 ||
+            kp.pt.y < patchSize / 2 || kp.pt.y >= img.rows - patchSize / 2)
         {
-            for (int dx = -2; dx <= 1; ++dx)
+            continue; // Пропускаем ключевые точки, для которых невозможно вычислить дескриптор
+        }
+
+        // Формируем бинарный дескриптор BRIEF
+        for (int j = 0; j < desc_length; ++j)
+        {
+            cv::Point p1 = cv::Point(kp.pt) + offsets1[j];
+            cv::Point p2 = cv::Point(kp.pt) + offsets2[j];
+
+            int intensity1 = img.at<uchar>(p1.y, p1.x);
+            int intensity2 = img.at<uchar>(p2.y, p2.x);
+
+            if (intensity1 < intensity2)
             {
-                int px = kp.pt.x + dx;
-                int py = kp.pt.y + dy;
-                desc_ptr[(dy + 2) * 4 + (dx + 2)] = img.at<uchar>(py, px);
+                desc_ptr[j / 8] |= (1 << (7 - (j % 8))); // Устанавливаем бит
             }
         }
     }
